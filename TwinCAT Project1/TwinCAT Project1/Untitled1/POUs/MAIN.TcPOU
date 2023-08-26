@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{2c281042-00d4-48ce-b1bb-959beaf1d8d8}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	fbReadIpc  : ADSREADEX := ( NETID := '192.168.3.47.1.1', PORT := 851, TMOUT := DEFAULT_ADS_TIMEOUT );
+    readCommand : BOOL := FALSE;
+    
+    readState     : BYTE := 0;
+    readBusy      : BOOL;
+    readError     : BOOL;
+    readErrID     : UDINT;
+    countRead     : UDINT;
+    
+    readData   : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE readState OF
+    0:
+        IF readCommand = TRUE THEN
+            readBusy := TRUE;
+            readError := FALSE;
+            readErrID := 0;
+            
+            fbReadIpc( READ := FALSE );
+            readCommand := FALSE;
+            fbReadIpc( IDXGRP := 16#4040, IDXOFFS := 385008, LEN := SIZEOF(readData), DESTADDR := ADR(readData), READ := TRUE );
+
+            readState := 1;
+        END_IF
+    1:
+        fbReadIpc( READ := FALSE, BUSY=>readBusy, ERR=>readError, ERRID=>readErrID, COUNT_R=>countRead );
+        IF readBusy = FALSE THEN
+            IF readError = FALSE THEN
+                readState := 0;(* Success *)
+            ELSE
+                readState := 100;(* Error *)
+            END_IF
+        END_IF
+        
+    100:(* TODO::Implement error handler *)
+        readState := 0;
+        
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="20" Count="7" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="42" Count="15" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
